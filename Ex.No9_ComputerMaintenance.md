@@ -1,5 +1,5 @@
 # Ex.No: 9  Logic Programming –  Computer Maintenance Expert System
-### DATE:                                                                            
+### DATE:07.10.2024                                                                            
 ### REGISTER NUMBER : 212222040034
 ### AIM: 
 Write a Prolog program to build a computer maintenance expert system.
