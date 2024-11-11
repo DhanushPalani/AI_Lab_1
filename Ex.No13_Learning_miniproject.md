@@ -3,11 +3,11 @@
 ### REGISTER NUMBER : 212222040034
 
 ### AIM:
-To write a program to train a classifier for garbage classification with PyTorch.
+To write a program to train a classifier for bus delay prediction using randomforest classifier.
 
 ### Algorithm:
-1. Import necessary libraries (PyTorch, Torchvision, etc.)
-2. Load the dataset of images representing different types of garbage
+1. Import necessary libraries 
+2. Load the dataset of images representing bus delay
 3. Define the EfficientNet-B0 model and add a classification head to it
 4. Create data loaders for training and validation sets
 5. Train the model using the Adam optimizer and cross-entropy loss function
@@ -15,94 +15,67 @@ To write a program to train a classifier for garbage classification with PyTorch
 
 
 ### Program:
-```python
-import torch
-import torchvision
-from torchvision import datasets, transforms, models
-from torch.utils.data import DataLoader
-import torch.optim as optim
-import torch.nn as nn
-import time
-import os
+```import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import LabelEncoder
 
-data_dir = "garbage_classification"
-data_transforms = transforms.Compose([
-    transforms.RandomResizedCrop(224),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-])
+# Load the dataset
+data = pd.read_csv('chennai_bus_delay_prediction.csv')
 
-train_dataset = datasets.ImageFolder(data_dir, transform=data_transforms)
-train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=4)
-num_classes = 12
+# Encode categorical variables if needed
+label_encoder = LabelEncoder()
+data['Day of Week'] = label_encoder.fit_transform(data['Day of Week'])
+data['Weather Condition'] = label_encoder.fit_transform(data['Weather Condition'])
+data['Traffic Condition'] = label_encoder.fit_transform(data['Traffic Condition'])
 
-model = models.efficientnet_b0(pretrained=True)
-model.classifier[1] = nn.Linear(model.classifier[1].in_features, num_classes)
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model = model.to(device)
+# Features: Select relevant columns based on your dataset
+X = data[['Delay (in Minutes)', 'Traffic Condition', 'Weather Condition', 'Day of Week']]
+y = data['Incident Detected']
 
-criterion = nn.CrossEntropyLoss()  
-optimizer = optim.Adam(model.parameters(), lr=1e-4)
+# Split data into training and test sets (80% training, 20% testing)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Function to track training progress
-def train_model(model, criterion, optimizer, num_epochs=5):
-    for epoch in range(num_epochs):
-        print(f'Epoch {epoch+1}/{num_epochs}')
-        print('-' * 10)
+# Initialize and train a Random Forest Classifier
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
 
-        model.train()  # Set model to training mode
-        running_loss = 0.0
-        running_corrects = 0
-        total_samples = 0
-        
-        start_time = time.time()
+# Predict the test set results
+y_pred = model.predict(X_test)
 
-        # Iterate over data in batches
-        for inputs, labels in train_loader:
-            inputs, labels = inputs.to(device), labels.to(device)
+# Evaluate the model's performance
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Model Accuracy: {accuracy * 100:.2f}%")
 
-            # Zero the parameter gradients
-            optimizer.zero_grad()
+# Function to search for bus data by bus number
+def search_bus_data(bus_number):
+    # Filter the data for the specific bus number
+    bus_data = data[data['Bus Number'] == bus_number]
 
-            # Forward pass
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
-            _, preds = torch.max(outputs, 1)
+    if bus_data.empty:
+        print(f"No data found for Bus Number: {bus_number}")
+    else:
+        # Display only relevant information for the specified bus number
+        for index, row in bus_data.iterrows():
+            print(f"Bus Number: {row['Bus Number']}, Route ID: {row['Route ID']}, "
+                  f"Starting Point: {row['Starting Point']}, Ending Point: {row['Ending Point']}, "
+                  f"Predicted Arrival Time: {row['Predicted Arrival Time']}, "
+                  f"Delay (in Minutes): {row['Delay (in Minutes)']}, "
+                  )
 
-            # Backward pass and optimization
-            loss.backward()
-            optimizer.step()
+# Main program to prompt user for input
+if __name__ == "__main__":
+    bus_number = input("Enter the bus number: ")  # Prompt user to enter a bus number
+    search_bus_data(bus_number)  # Search and display the bus data
 
-            # Update statistics
-            running_loss += loss.item() * inputs.size(0)
-            running_corrects += torch.sum(preds == labels.data)
-            total_samples += labels.size(0)
-
-            # Print progress every 100 batches
-            if total_samples % 3200 == 0:
-                batch_loss = running_loss / total_samples
-                batch_acc = running_corrects.double() / total_samples
-                print(f"Progress: {total_samples}/{len(train_dataset)} - Loss: {batch_loss:.4f}, Acc: {batch_acc:.4f}")
-
-        # End of epoch stats
-        epoch_loss = running_loss / len(train_loader.dataset)
-        epoch_acc = running_corrects.double() / len(train_loader.dataset)
-
-        print(f'Epoch {epoch+1} - Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
-        print(f'Time for epoch {epoch+1}: {time.time() - start_time:.2f} seconds\n')
-
-    return model
-
-
-model = train_model(model, criterion, optimizer, num_epochs=10)
-torch.save(model.state_dict,"garbage_classifier")
 ```
 
 
 ### Output:
 
-![image](https://github.com/user-attachments/assets/732febf2-7f8c-4f63-a35d-32c1af2cd8d4)<br>
+![image](https://github.com/user-attachments/assets/4ac5c902-2826-4749-838e-f02cf1549cda)
+
 The Model reached an accuracy of 97.5% after 10 epochs against the test dataset.
 
 
